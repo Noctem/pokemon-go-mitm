@@ -18,11 +18,11 @@ server = new PokemonGoMITM port: 8081, debug: true
 		console.log "[#] Request Envelope", decoded
 		fs.writeFileSync "#{timestamp}.#{id}.request", buffer, 'binary'
 
-		# TODO: update once repeated field 6 is parsed
-		return false unless decoded?.unknown6[0]?.unknown2?.encrypted_signature
+		return false unless decoded.platform_requests[0]?.request_message
 
-		buffer = pcrypt.decrypt decoded.unknown6[0]?.unknown2?.encrypted_signature
-		decoded = @parseProtobuf buffer, 'POGOProtos.Networking.Envelopes.Signature'
+		encrypted = @parseProtobuf decoded.platform_requests[0]?.request_message, 'POGOProtos.Networking.Platform.Requests.SendEncryptedSignatureRequest'
+		buffer = pcrypt.decrypt encrypted.encrypted_signature
+		decoded = @parseProtobuf buffer, 'POGOProtos.Networking.Envelopes.SignalAgglomUpdates'
 		console.log "[@] Request Envelope Signature", decoded
 		fs.writeFileSync "#{timestamp}.#{id}.signature", buffer, 'binary'
 		false
