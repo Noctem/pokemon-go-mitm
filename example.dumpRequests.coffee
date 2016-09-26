@@ -15,20 +15,27 @@ fs = require 'fs'
 timestamp = Date.now()
 platFile = "PlatformRequest-#{timestamp}.json"
 fullFile = "Full-#{timestamp}.json"
-fs.appendFile "#{platFile}", '[\n', 'utf8'
-fs.appendFile "#{fullFile}", '[\n', 'utf8'
+fs.writeFileSync "#{platFile}", '[\n', 'utf8'
+fs.writeFileSync "#{fullFile}", '[\n', 'utf8'
 
 server = new PokemonGoMITM port: 8081
     .addRequestEnvelopeHandler (data) ->
-        encrypted =  @parseProtobuf data.platform_requests[0]?.request_message, 'POGOProtos.Networking.Platform.Requests.SendEncryptedSignatureRequest'
-        buffer = pcrypt.decrypt encrypted.encrypted_signature
-        decoded = @parseProtobuf buffer, 'POGOProtos.Networking.Envelopes.SignalAgglomUpdates'
-        console.log decoded
-        fs.appendFile "#{platFile}", JSON.stringify(decoded, null, 4), 'utf8'
-        fs.appendFile "#{fullFile}", JSON.stringify(data, null, 4), 'utf8'
-        fs.appendFile "#{platFile}", ',\n', 'utf8'
-        fs.appendFile "#{fullFile}", ',\n', 'utf8'
-        false
+        try
+            fs.appendFileSync "#{fullFile}", JSON.stringify(data, null, '\t'), 'utf8'
+            fs.appendFileSync "#{fullFile}", ',\n', 'utf8'
+
+            return false unless data.platform_requests
+            for plat in data.platform_requests
+                encrypted =  @parseProtobuf plat.request_message, 'POGOProtos.Networking.Platform.Requests.SendEncryptedSignatureRequest'
+                buffer = pcrypt.decrypt encrypted.encrypted_signature
+                decoded = @parseProtobuf buffer, 'POGOProtos.Networking.Envelopes.SignalAgglomUpdates'
+                console.log decoded
+                fs.appendFileSync "#{platFile}", JSON.stringify(decoded, null, '\t'), 'utf8'
+                fs.appendFileSync "#{platFile}", ',\n', 'utf8'
+            false
+        catch error
+            console.log "Error: #{error}"
+            false
 
 fs.appendFile "#{platFile}", '\n]', 'utf8'
 fs.appendFile "#{fullFile}", '\n]', 'utf8'
